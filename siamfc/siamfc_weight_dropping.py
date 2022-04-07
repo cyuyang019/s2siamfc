@@ -114,6 +114,7 @@ class TrackerSiamFC(Tracker):
             # train parameters
             'epoch_num': 50,
             'batch_size': 8,
+            #'batch_size': 1,
             'num_workers': 3,
             'initial_lr': 1e-2,
             'ultimate_lr': 1e-5,
@@ -278,7 +279,7 @@ class TrackerSiamFC(Tracker):
 
         return box
     
-    def track(self, img_files, box, visualize=True):
+    def track(self, img_files, box, groundtruth_array, visualize=True):
         frame_num = len(img_files)
         boxes = np.zeros((frame_num, 4))
         boxes[0] = box
@@ -286,7 +287,6 @@ class TrackerSiamFC(Tracker):
 
         for f, img_file in enumerate(img_files):
             img = ops.read_image(img_file)
-            
             begin = time.time()
             if f == 0:
                 self.init(img, box)
@@ -294,8 +294,10 @@ class TrackerSiamFC(Tracker):
                 boxes[f, :] = self.update(img)
             times[f] = time.time() - begin
 
+            groundtruth_box = groundtruth_array[f]
+            
             if visualize:
-                ops.show_image(img, boxes[f, :])
+                ops.show_image(img, boxes[f, :], groundtruth_box, visualize=visualize, fid=f+1)
 
         return boxes, times
     
@@ -469,16 +471,13 @@ class TrackerSiamFC(Tracker):
             pin_memory=self.cuda,
             drop_last=True)
         
-        
         end = time.time()
         # loop over epochs
         for epoch in range(self.cfg.epoch_num):
             # update lr at each epoch
             
-
             # loop over dataloader
             for it, batch in enumerate(dataloader):
-                
 #                torchvision.utils.save_image(batch[0][0], 'test0.png')
 #                torchvision.utils.save_image(batch[1][0], 'test1.png')
 #                raise ""
@@ -503,6 +502,7 @@ class TrackerSiamFC(Tracker):
 #                    print('Num_high:{:d}'.format(torch.sum(responses.detach()>0.8)))
 
                     sys.stdout.flush()
+                
                     
             self.lr_scheduler.step(epoch=epoch)
             
