@@ -114,8 +114,9 @@ class TrackerSiamFC(Tracker):
             # train parameters
             'epoch_num': 50,
             'batch_size': 8,
-            #'batch_size': 1,
-            'num_workers': 3,
+            #'batch_size': 2,
+            #'num_workers': 3,
+            'num_workers': 0,
             'initial_lr': 1e-2,
             'ultimate_lr': 1e-5,
             'weight_decay': 5e-4,
@@ -470,7 +471,9 @@ class TrackerSiamFC(Tracker):
             num_workers=self.cfg.num_workers,
             pin_memory=self.cuda,
             drop_last=True)
-        
+        print(dataset.__len__())
+        print(dataloader.batch_size) 
+        #print(len(dataset.img_loader))
         end = time.time()
         # loop over epochs
         for epoch in range(self.cfg.epoch_num):
