@@ -471,9 +471,6 @@ class TrackerSiamFC(Tracker):
             num_workers=self.cfg.num_workers,
             pin_memory=self.cuda,
             drop_last=True)
-        print(dataset.__len__())
-        print(dataloader.batch_size) 
-        #print(len(dataset.img_loader))
         end = time.time()
         # loop over epochs
         for epoch in range(self.cfg.epoch_num):
@@ -578,3 +575,78 @@ class TrackerSiamFC(Tracker):
         self.label = torch.from_numpy(label).to(self.device).float()
         
         return self.label
+
+    def finetune_step(self, batch, backward=True):
+        # set network mode
+        self.net.train(backward)
+
+        # parse batch data
+        z = batch[0].to(self.device, non_blocking=self.cuda)
+        x = batch[1].to(self.device, non_blocking=self.cuda)
+
+        with torch.set_grad_enabled(backward):
+            # inference
+            responses = self.net(z, x)
+
+            # calculate loss
+            labels = self._create_labels(responses.size())
+            loss = self.criterion(responses, labels)
+            
+            if backward:
+                # back propagation
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+        
+        return loss.item()
+
+    @torch.enable_grad()
+    def finetune(self, seqs, finetune_target, val_seqs=None,
+                   save_dir=None):
+        # set to train mode
+        self.net.train()
+        """
+        # create save_dir folder
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        """
+        # setup dataset
+        transforms = SiamFCTransforms(
+            exemplar_sz=self.cfg.exemplar_sz,
+            instance_sz=self.cfg.instance_sz,
+            context=self.cfg.context)
+        dataset = Pair(
+            seqs=seqs,
+            transforms=transforms,
+            supervised='final_finetune',
+            finetune_target=finetune_target)
+        print("dataset length:", dataset.__len__())
+        # setup dataloader
+        dataloader = DataLoader(
+            dataset,
+            batch_size=1,
+            shuffle=True,
+            num_workers=self.cfg.num_workers,
+            pin_memory=self.cuda,
+            drop_last=True)
+        
+        print("dataloader length:", dataloader.__len__())
+        # loop over epochs
+        for epoch in range(self.cfg.epoch_num):
+            # update lr at each epoch
+            self.lr_scheduler.step(epoch=epoch)
+
+            # loop over dataloader
+            for it, batch in enumerate(dataloader):
+                loss = self.finetune_step(batch, backward=True)
+                print('Epoch: {} [{}/{}] Loss: {:.5f}'.format(
+                    epoch + 1, it + 1, len(dataloader), loss))
+                sys.stdout.flush()
+            '''
+            # save checkpoint
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            net_path = os.path.join(
+                save_dir, 'finetune_e%d.pth' % (epoch + 1))
+            torch.save(self.net.state_dict(), net_path)
+            '''

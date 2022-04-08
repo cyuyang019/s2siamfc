@@ -24,15 +24,15 @@ torch.backends.cudnn.benchmark = False
 
 if __name__ == '__main__':
 
-    save_dir = '/home/u7121186/s2siamfc/checkpoints/'
+    save_dir = './checkpoints/'
     save_path = os.path.join(save_dir, 'S2SiamFC')
     print("cuda: ", torch.cuda.is_available())
-    neg_dir = ['/home/u7121186/s2siamfc/seq2neg_dict.json', '/home/u7121186/s2siamfc/cluster_dict.json']
-    root_dir = '/work/u7121186/ILSVRC2015'      #Dataset path
+    neg_dir = ['./seq2neg_dict.json', './cluster_dict.json']
+    root_dir = '/Users/chenyuyang/ILSVRC2015'      #Dataset path
     #root_dir = '~/ILSVRC2015'
     seqs = ImageNetVID(root_dir, subset=['train'], neg_dir=neg_dir[0])
     #seqs = ImageNetVID(root_dir, subset=['train'], neg_dir=neg_dir[1])
-    print("seq len: ", len(seqs))
+    #print("seq len: ", len(seqs))
     print("seqs: ",seqs)
 # =============================================================================
 #     root_dir = 'E:\SiamMask\data\coco'

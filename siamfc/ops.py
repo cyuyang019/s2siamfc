@@ -30,7 +30,7 @@ def read_image(img_file, cvt_code=cv2.COLOR_BGR2RGB):
     return img
 
 
-def show_image(img, boxes=None, box_fmt='ltwh', colors=None,
+def show_image(img, boxes=None, groundtruth_box=None, box_fmt='ltwh', colors=None,
                thickness=3, fig_n=1, delay=1, visualize=False,
                cvt_code=cv2.COLOR_RGB2BGR, fid=None):
     if cvt_code is not None:
@@ -46,6 +46,7 @@ def show_image(img, boxes=None, box_fmt='ltwh', colors=None,
         img = cv2.resize(img, out_size)
         if boxes is not None:
             boxes = np.array(boxes, dtype=np.float32) * scale
+        groundtruth_box = groundtruth_box * scale
     
     if boxes is not None:
         assert box_fmt in ['ltwh', 'ltrb']
@@ -83,6 +84,10 @@ def show_image(img, boxes=None, box_fmt='ltwh', colors=None,
             pt1 = (box[0], box[1])
             pt2 = (box[0] + box[2], box[1] + box[3])
             img = cv2.rectangle(img, pt1, pt2, color.tolist(), thickness)
+
+            pt_one = np.array((groundtruth_box[0], groundtruth_box[1]), dtype=np.int32)
+            pt_two = np.array((groundtruth_box[0] + groundtruth_box[2], groundtruth_box[1] + groundtruth_box[3]), dtype=np.int32)
+            img = cv2.rectangle(img, pt_one, pt_two, (255, 0, 0), thickness)
             
     if not os.path.exists("./test/demo"):
         os.makedirs("./test/demo")     

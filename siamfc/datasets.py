@@ -12,26 +12,29 @@ __all__ = ['Pair']
 class Pair(Dataset):
 
     def __init__(self, seqs, transforms=None,
-                 pairs_per_seq=1, supervised='supervised', neg=False, img_loader=None):
+                 pairs_per_seq=1, supervised='supervised', neg=False, img_loader=None, finetune_target=None):
         super(Pair, self).__init__()
         self.seqs = seqs
         self.transforms = transforms
         self.pairs_per_seq = pairs_per_seq
         self.img_loader = img_loader
         self.indices = np.random.permutation(len(seqs))
+        if supervised=='final_finetune':
+            self.indices = [1]
         self.supervised = supervised
         self.rangeup = 10
         self.neg = neg
+        self.finetune_target = finetune_target
 
         if self.neg:
-            self.cluster_dict = json.load(open('/home/u7121186/s2siamfc/cluster_dict.json'), object_pairs_hook=OrderedDict)
+            self.cluster_dict = json.load(open('./cluster_dict.json'), object_pairs_hook=OrderedDict)
 
     def __getitem__(self, index):
         index = self.indices[index % len(self.indices)]
 
         if self.neg:
             img_files, seq_name, cluster_id = self.seqs[index] #[:2]
-        else:
+        elif self.supervised != 'final_finetune':
             img_files, seq_name = self.seqs[index]
 
 
@@ -107,12 +110,14 @@ class Pair(Dataset):
                 #print("img files: ", img_files)
                 random_fid = np.random.choice(len(img_files))
 # =============================================================================
-#                 z = cv2.imread(img_files[random_fid], cv2.IMREAD_COLOR)
+#                z = cv2.imread(img_files[random_fid], cv2.IMREAD_COLOR)
 #     #            x = cv2.imread(img_files[random_fid], cv2.IMREAD_COLOR)
-#                 z = cv2.cvtColor(z, cv2.COLOR_BGR2RGB)
+#                z = cv2.cvtColor(z, cv2.COLOR_BGR2RGB)
 #     #            x = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
+#                print("img_file len: ", len(img_files))
+#                print("random:", random_fid)
+#                print("what the fuck:", img_files[random_fid])
 # =============================================================================
-
                 z = self.img_loader(img_files[random_fid])      #get RGB img
 
                 img_h, img_w, _ = z.shape
@@ -139,6 +144,52 @@ class Pair(Dataset):
                 item = self.transforms(z)
 
             return [item, img_path, seq_name]
+        
+        elif self.supervised == 'final_finetune':
+            #print("seqs:", self.seqs[index])
+            '''
+            return_meta = getattr(self.seqs, 'return_meta', False)
+            print("return_meta: ", return_meta)
+            # get filename lists and annotations
+            if return_meta:
+                img_files, anno, meta = self.seqs[index]
+                vis_ratios = meta.get('cover', None)
+            else:
+                img_files, anno = self.seqs[index][:2]
+                vis_ratios = None
+            '''
+            img_files, anno = self.seqs[self.finetune_target][:2]
+            #print("img_files:", img_files)
+            #print("anno:", anno)
+            """
+            vis_ratios = None
+            # filter out noisy frames
+            val_indices = self._filter(
+                cv2.imread(img_files[0], cv2.IMREAD_COLOR),
+                anno, vis_ratios)
+            if len(val_indices) < 2:
+                index = np.random.choice(len(self))
+                return self.__getitem__(index)
+
+            # sample a frame pair
+            rand_z, rand_x = self._sample_pair(val_indices)
+            """
+            rand_z = 0
+            rand_x = 0
+            z = cv2.imread(img_files[rand_z], cv2.IMREAD_COLOR)
+            x = cv2.imread(img_files[rand_x], cv2.IMREAD_COLOR)
+            z = cv2.cvtColor(z, cv2.COLOR_BGR2RGB)
+            x = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
+            #cv2.imshow("please", z)
+            #cv2.waitKey()
+            box_z = anno[rand_z]
+            box_x = anno[rand_x]
+
+            item = (z, x, box_z, box_x)
+            if self.transforms is not None:
+                item = self.transforms(*item)
+            
+            return item
 
     def __len__(self):
         return len(self.indices) * self.pairs_per_seq
